@@ -56,6 +56,9 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 	private Stmt correspondingCallSite = null;
 	
 	private SourceContext sourceContext = null;
+	
+	// Whether or not the conditions are satisfied
+	private boolean conditionRespected = false; 
 
 	// only used in path generation
 	private Set<SourceContextAndPath> pathCache = null;
@@ -121,6 +124,7 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 			exceptionThrown = false;
 			activationUnit = null;
 			isImplicit = false;
+			conditionRespected = false;
 		}
 		else {
 			sourceContext = original.sourceContext;
@@ -133,6 +137,8 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 			
 			dependsOnCutAP = original.dependsOnCutAP;
 			isImplicit = original.isImplicit;
+			
+			conditionRespected = original.conditionRespected;
 		}
 		accessPath = p;
 		neighbors = null;
@@ -400,6 +406,7 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		abs.neighbors = null;
 		abs.currentStmt = null;
 		abs.correspondingCallSite = null;
+		abs.conditionRespected = this.conditionRespected;
 		
 		assert abs.equals(this);
 		return abs;
@@ -459,6 +466,8 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 			return false;
 		if(this.isImplicit != other.isImplicit)
 			return false;
+		if (this.conditionRespected != other.conditionRespected)
+			return false;
 		return true;
 	}
 	
@@ -478,6 +487,7 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 		result = prime * result + ((postdominators == null) ? 0 : postdominators.hashCode());
 		result = prime * result + (dependsOnCutAP ? 1231 : 1237);
 		result = prime * result + (isImplicit ? 1231 : 1237);
+		result = prime * result + (conditionRespected ? 0 : 1);
 		this.hashCode = result;
 		
 		return this.hashCode;
@@ -635,6 +645,14 @@ public class Abstraction implements Cloneable, FastSolverLinkedNode<Abstraction,
 	
 	@Override
 	public void setCallingContext(Abstraction callingContext) {
+	}
+	
+	public void setConditionRespected(boolean doesRespectConditions) {
+		this.conditionRespected = doesRespectConditions;
+	}
+	
+	public boolean isConditionRespected() {
+		return conditionRespected;
 	}
 		
 }

@@ -3,6 +3,7 @@ package soot.jimple.infoflow;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import soot.jimple.infoflow.problems.conditions.ConditionSet;
 
 /**
  * Central configuration class for FlowDroid
@@ -82,7 +83,9 @@ public class InfoflowConfiguration {
 	private int maxThreadNum = -1;
 	private boolean writeOutputFiles = false;
 	private boolean logSourcesAndSinks = false;
-	
+
+	private ConditionSet conditions;
+
 	private boolean inspectSources = false;
 	private boolean inspectSinks = false;
 	
@@ -536,7 +539,22 @@ public class InfoflowConfiguration {
 	public void setLogSourcesAndSinks(boolean logSourcesAndSinks) {
 		this.logSourcesAndSinks = logSourcesAndSinks;
 	}
-	
+
+	/**
+	 * Sets the condition set that the final result must satisfy. Set a
+	 * <code>null</code> value if you don't want any conditions to be satisfied.
+	 * 
+	 * @param conditions
+	 *            The conditions to be satisfied.
+	 */
+	public void setConditions(ConditionSet conditions) {
+		this.conditions = conditions;
+	}
+
+	public ConditionSet getConditions() {
+		return conditions;
+	}
+
 	/**
 	 * Prints a summary of this data flow configuration
 	 */

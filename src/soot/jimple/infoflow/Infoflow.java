@@ -281,6 +281,7 @@ public class Infoflow extends AbstractInfoflow {
 		forwardSolver.setMemoryManager(memoryManager);
 		forwardSolver.setJumpPredecessors(!pathBuilderFactory.supportsPathReconstruction());
 //		forwardSolver.setEnableMergePointChecking(true);
+		forwardSolver.setConditions(config.getConditions());
 		
 		forwardProblem.setTaintPropagationHandler(taintPropagationHandler);
 		forwardProblem.setTaintWrapper(taintWrapper);

@@ -23,6 +23,7 @@ import soot.SootMethod;
 import soot.Unit;
 import soot.jimple.infoflow.data.Abstraction;
 import soot.jimple.infoflow.problems.AbstractInfoflowProblem;
+import soot.jimple.infoflow.problems.conditions.ConditionSet;
 import soot.jimple.infoflow.solver.IFollowReturnsPastSeedsHandler;
 import soot.jimple.infoflow.solver.IInfoflowSolver;
 import soot.jimple.infoflow.solver.functions.SolverCallFlowFunction;
@@ -39,8 +40,11 @@ public class InfoflowSolver extends IFDSSolver<Unit, Abstraction, SootMethod, Bi
 		implements IInfoflowSolver {
 	
 	private IFollowReturnsPastSeedsHandler followReturnsPastSeedsHandler = null;
+
 	
 	public InfoflowSolver(AbstractInfoflowProblem problem, CountingThreadPoolExecutor executor) {
+	private ConditionSet conditions;
+
 		super(problem);
 		this.executor = executor;
 		problem.setSolver(this);		
@@ -138,5 +142,35 @@ public class InfoflowSolver extends IFDSSolver<Unit, Abstraction, SootMethod, Bi
 	public void setFollowReturnsPastSeedsHandler(IFollowReturnsPastSeedsHandler handler) {
 		this.followReturnsPastSeedsHandler = handler;
 	}
-	
+
+	@Override
+	protected void propagate(Abstraction sourceVal, Unit target,
+			Abstraction targetVal, Unit relatedCallSite,
+			boolean isUnbalancedReturn, boolean forceRegister) {
+
+		/*
+		 * If condition is not satisfied yet and there at least a condition to
+		 * satisfy, let's check it.
+		 */
+		if (!targetVal.isConditionRespected() && this.conditions != null
+				&& conditions.isSatisfied(target)) {
+			targetVal.setConditionRespected(true);
+		}
+
+		super.propagate(sourceVal,
+				target,
+				targetVal,
+				relatedCallSite,
+				isUnbalancedReturn,
+				forceRegister);
+	}
+
+	public void setConditions(ConditionSet conditions) {
+		this.conditions = conditions;
+	}
+
+	public ConditionSet getConditions() {
+		return conditions;
+	}
+
 }
