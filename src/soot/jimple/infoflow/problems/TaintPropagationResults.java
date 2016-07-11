@@ -41,9 +41,11 @@ public class TaintPropagationResults {
 			return;
 		
 		// Construct the abstraction at the sink
-		Abstraction abs = resultAbs.getAbstraction();
-		if (!abs.isConditionRespected())
+		Abstraction abs = resultAbs.getAbstraction();		
+		
+		if (manager.getConfig().getConditions() != null && !abs.isConditionRespected())
 			return;
+		
 		abs = abs.deriveNewAbstraction(abs.getAccessPath(), resultAbs.getSinkStmt());
 		abs.setCorrespondingCallSite(resultAbs.getSinkStmt());
 		

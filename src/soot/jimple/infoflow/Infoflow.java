@@ -38,6 +38,7 @@ import soot.jimple.infoflow.aliasing.FlowSensitiveAliasStrategy;
 import soot.jimple.infoflow.aliasing.IAliasingStrategy;
 import soot.jimple.infoflow.aliasing.PtsBasedAliasStrategy;
 import soot.jimple.infoflow.cfg.BiDirICFGFactory;
+import soot.jimple.infoflow.cfg.SharedCfg;
 import soot.jimple.infoflow.codeOptimization.DeadCodeEliminator;
 import soot.jimple.infoflow.codeOptimization.ICodeOptimizer;
 import soot.jimple.infoflow.data.Abstraction;
@@ -53,6 +54,8 @@ import soot.jimple.infoflow.handlers.ResultsAvailableHandler;
 import soot.jimple.infoflow.handlers.TaintPropagationHandler;
 import soot.jimple.infoflow.problems.BackwardsInfoflowProblem;
 import soot.jimple.infoflow.problems.InfoflowProblem;
+import soot.jimple.infoflow.problems.conditions.BreadthFirstSearch;
+import soot.jimple.infoflow.problems.conditions.ConditionSet;
 import soot.jimple.infoflow.results.InfoflowResults;
 import soot.jimple.infoflow.results.ResultSinkInfo;
 import soot.jimple.infoflow.results.ResultSourceInfo;
@@ -223,6 +226,9 @@ public class Infoflow extends AbstractInfoflow {
         	logger.info("Callgraph has {} edges", Scene.v().getCallGraph().size());
         iCfg = icfgFactory.buildBiDirICFG(config.getCallgraphAlgorithm(),
         		config.getEnableExceptionTracking());
+        
+        // Sets the shared CFG
+        SharedCfg.setCfg(iCfg);
 		        
         int numThreads = Runtime.getRuntime().availableProcessors();
 		CountingThreadPoolExecutor executor = createExecutor(numThreads);
@@ -281,10 +287,10 @@ public class Infoflow extends AbstractInfoflow {
 		forwardSolver.setMemoryManager(memoryManager);
 		forwardSolver.setJumpPredecessors(!pathBuilderFactory.supportsPathReconstruction());
 //		forwardSolver.setEnableMergePointChecking(true);
-		forwardSolver.setConditions(config.getConditions());
 		
 		forwardProblem.setTaintPropagationHandler(taintPropagationHandler);
 		forwardProblem.setTaintWrapper(taintWrapper);
+		
 		if (nativeCallHandler != null)
 			forwardProblem.setNativeCallHandler(nativeCallHandler);
 		
@@ -341,6 +347,16 @@ public class Infoflow extends AbstractInfoflow {
 		if (nativeCallHandler != null)
 			nativeCallHandler.initialize(manager);
 		
+		/*
+		 * Check if conditions are satisfied before the source,
+		 * otherwise check them during taint propagation 
+		 */
+		ConditionSet conditions = this.getConfig().getConditions();
+		if (conditions != null && !conditions.isEmpty()) {
+			if (!checkForConditionsSatisfaction(forwardProblem.getInitialSeeds().keySet(), conditions)) {
+				forwardSolver.setConditions(config.getConditions());
+			}
+		}
 		forwardSolver.solve();
 		maxMemoryConsumption = Math.max(maxMemoryConsumption, getUsedMemory());
 		
@@ -434,6 +450,47 @@ public class Infoflow extends AbstractInfoflow {
 		System.out.println("Maximum memory consumption: " + maxMemoryConsumption / 1E6 + " MB");
 	}
 	
+	/**
+	 * @return
+	 */
+	private boolean checkForConditionsSatisfaction(Set<Unit> sources, final ConditionSet conditions) {
+		for (Unit source : sources) {
+			BreadthFirstSearch<Unit> searcher = new BreadthFirstSearch<Unit>(this.iCfg) {
+
+				@Override
+				protected Collection<Unit> nextNodes(Unit current) {
+					Set<Unit> result = new HashSet<>();
+
+					Collection<Unit> predecessors = cfg.getPredsOf(current);
+
+					if (!predecessors.isEmpty()) {
+						// Navigate the CFG backwards
+						result.addAll(cfg.getPredsOf(current));
+					} else {
+						// If it is a start node, let's add the caller of this method
+						Collection<Unit> callers = cfg.getCallersOf(
+								cfg.getMethodOf(current));
+						result.addAll(callers);
+					}
+
+					return result;
+				}
+
+				@Override
+				protected boolean isResult(Unit node) {
+					// Check if the condition set is satisfied
+					return conditions.isSatisfied(node);
+				}
+			};
+			
+			Set<Unit> results = searcher.search(source, true);
+			if (results.size() > 0) {
+				return true;
+			}
+		}
+		return false;
+	}
+
 	/**
 	 * Gets the memory used by FlowDroid at the moment
 	 * @return FlowDroid's current memory consumption in bytes

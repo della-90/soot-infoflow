@@ -76,6 +76,14 @@ public class ConditionSet {
 
 		return true;
 	}
+	
+	public int size() {
+		return this.mConditions.size();
+	}
+	
+	public boolean isEmpty() {
+		return this.mConditions.isEmpty();
+	}
 
 	@Override
 	public String toString() {
